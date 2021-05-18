@@ -6,6 +6,8 @@ Source code example for [A simple website in node.js with express, jade and styl
 Build
 -----
 
+./build_docker.sh
+
 Run this command in console:
 
 ```
@@ -17,6 +19,8 @@ All dependencies will be downloaded by `npm` to `node_modules` folder.
 Run
 ---
 
+./run_docker
+
 Run this command in console:
 
 ```
@@ -24,3 +28,5 @@ node app.js
 ```
 
 Open `http://localhost:3000` to access basic Express Site.
+
+
