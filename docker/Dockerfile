@@ -22,11 +22,16 @@ RUN apk --no-cache add wget
 RUN apk --no-cache add openssh-server openssh-client
 
 # Install git
-
 RUN apk --no-cache add git
 
-WORKDIR /home/user
+# install npm 
+RUN apk add --update nodejs npm
 
+# install sudo
+RUN set -ex && apk --no-cache add sudo
+
+
+WORKDIR /home/user
 USER user
 
 # Make the command line look nice
