@@ -1,18 +1,19 @@
 Build
 -----
 
-./build_docker.sh
+```./build_docker.sh```
 
 This will download all dependancies into a docker image ```alpine/basic_website ```
 
 Run
 ---
 
-./run_docker.sh
+```./run_docker.sh```
 
 This will put you into the docker container and will bring in your local copy of the repo. Any changes made to you local files will be reflected in the container and vise-versa. NOTE that the docker container is destroyed on exit and anything not in the basic_website folder is lost
 
-
+For some reason the app needs to be run as sudo, need to fix this later
+```sudo npm start```
 
 
 # Getting Started with Create React App

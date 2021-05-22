@@ -32,6 +32,8 @@ RUN apk --no-cache add git
 
 # install npm 
 RUN apk add --update nodejs npm
+
+# This is also bad practice, need to work out how to fix the npm permissions
 RUN chown -R $USER /usr/lib/node_modules
 
 WORKDIR /home/user
@@ -53,4 +55,7 @@ USER user
 # This is kind of a hacky fix to repair the permissions at the end
 USER root
 RUN chown -R $USER .config
+# increases the number of file system changes that can be tracked
+RUN echo "fs.inotify.max_user_watches=524288" | tee -a /etc/sysctl.conf
 USER user
+
