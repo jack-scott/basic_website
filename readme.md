@@ -8,25 +8,19 @@ Build
 
 ./build_docker.sh
 
-Run this command in console:
-
-```
-npm install
-```
-
-All dependencies will be downloaded by `npm` to `node_modules` folder.
+This will download all dependancies into a docker image ```alpine/basic_website ```
 
 Run
 ---
 
-./run_docker
+./run_docker.sh
 
-Run this command in console:
+This will put you into the docker container and will bring in your local copy of the repo. Any changes made to you local files will be reflected in the container and vise-versa
 
-```
-node app.js
-```
+You might need to run ```npm install``` to get the latest node-modules
 
-Open `http://localhost:3000` to access basic Express Site.
+To start the webserver use ```node app.js```
+
+Open `http://localhost:3000` to access the boiler plate website.
 
 
