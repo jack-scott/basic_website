@@ -7,7 +7,9 @@
 
 # testing
 /coverage
-/test_data/*
+test_data/*
+# exception to the rule
+!test_data/.gitkeep 
 
 # production
 /build
