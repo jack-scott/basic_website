@@ -62,4 +62,4 @@ USER user
 # install python tools
 
 RUN pip install --user requests
-
+RUN pip install --user  beautifulsoup4
