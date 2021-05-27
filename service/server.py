@@ -1,5 +1,10 @@
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
+import requests
+
+SE_API_URL = 'https://api.stackexchange.com/2.2'
+SE_API_KEY = 'Qz8eMjXBV4vlViTQGXt6fw(('
+
 
 # defines an endpoint to fetch a list of stackoverflow urls based
 # based off a query
@@ -10,8 +15,19 @@ class Solutions(Resource):
         parser.add_argument('q', required=True) 
         args = parser.parse_args()
         # for plumbing sake, return queries passed via url
-        print('look ma a server' + args['q'])
-        return args['q']
+
+        query_params = {
+            'key': SE_API_KEY,
+            'site': 'stackoverflow',
+            'q': args['q']
+        }
+
+        response = requests.get(f'{SE_API_URL}/search/advanced', query_params)
+        # un-comment to return full stack overflow response
+        # return response.json()
+
+        items = response.json()['items']
+        return [item['link'] for item in items]
 
 if __name__ == "__main__":
     app = Flask(__name__)
