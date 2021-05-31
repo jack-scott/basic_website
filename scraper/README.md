@@ -4,7 +4,7 @@ Currently just collates a JSON file full of Python errors and a link to the Stac
 
 ## To run
 
-Run `python testing_tools.py` in the docker container. Will output a raw and a parsed `.json` file in the `test_data` folder.
+Run `python error_scraper.py` in the docker container. Will output a raw and a parsed `.json` file in the `test_data` folder.
 
 Example of output:
 
