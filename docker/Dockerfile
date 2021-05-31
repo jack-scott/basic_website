@@ -59,3 +59,7 @@ RUN chown -R $USER .config
 RUN echo "fs.inotify.max_user_watches=524288" | tee -a /etc/sysctl.conf
 USER user
 
+# install python tools
+
+RUN pip install --user requests
+RUN pip install --user  beautifulsoup4
