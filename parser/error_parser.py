@@ -62,7 +62,9 @@ class Scanner(object):
         words = line.split(" ")
         for word in words:
             word = word.lower()
-            if "traceback" in word:
+            if "exception" in word:
+                return ExceptionToken(line)
+            elif "traceback" in word:
                 return TracebackToken(line)
             elif "error" in word or word == "generatorerror" or word == "systemexit":
                 return ErrorToken(word, line)
@@ -95,6 +97,9 @@ class UnclassifiedToken(Token):
     def __init__(self, _str):
         super().__init__("UNCLASSIFIED" , _str)
 
+class ExceptionToken(Token):
+    def __init__(self, _str):
+        super().__init__("EXCEPTION" , _str)
 
 
 
@@ -104,8 +109,12 @@ if __name__ == '__main__':
 
     with open(in_location, 'r') as infile:
         json_contents = json.load(infile)
+        count = 1
         for data in json_contents:
+            print("---------------- {} ----------------".format(count))
             my_tokens = scan.scanner(data["error"])
             for token in my_tokens:
-                if token.token_type == "ERROR":
+                if token.token_type == "ERROR" or token.token_type == "EXCEPTION":
                     print(token.token_str)
+            print("------------------------------------")
+            count += 1
