@@ -88,10 +88,14 @@ class Parser(object):
         new_word = self.scanner.advance()
         while new_word is not None:
             print(new_word)
+            #TODO implement parser here
+
             new_word = self.scanner.advance()
             if new_word is None:
                 self.scanner.move_to_next_line()
                 new_word = self.scanner.advance()   
+            
+
             
         # time.sleep(1)
         # for word in words:
