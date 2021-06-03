@@ -116,7 +116,7 @@ if __name__ == '__main__':
             print("---------------- {} ----------------".format(count))
             my_tokens = scan.scanner(data["error"])
             for token in my_tokens:
-                if token.token_type == "ERROR" or token.token_type == "EXCEPTION":
+                if token.token_type == "EXCEPTION":
                     print(token.token_str)
             print("------------------------------------")
             count += 1

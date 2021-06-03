@@ -47,7 +47,7 @@ class Scanner(object):
     def append(self, input_stream):
         curr_input = input_stream.split("\n")
         #NOTE can probably change this to extend
-        self.lines.append(curr_input[0])    # Just append text not single position array
+        self.lines.extend(curr_input)    # Just append text not single position array
 
     def move_to_next_line(self):
         if self.lines:  #Detect if still has item
@@ -60,54 +60,133 @@ class Scanner(object):
         # Check if the line has already been split
         if self.words is None:
             if self.curr_line is not None:
-                if self.curr_line == "":
-                    print("Returning none from advance because curr_line empty")
-                    return None # Nothing left to parse
-                else:
-                    self.words = deque()
-                    self.words.extend(self.curr_line.split(" "))
+                # if self.curr_line == "":
+                #     print("Returning none from advance because curr_line empty")
+                #     return None # Nothing left to parse
+                # else:
+                self.words = deque()
+                self.words.extend(self.curr_line.split(" "))
             else:
                 print("Returning none from advance because curr_line is None ")
                 return None
         
-        if self.words:  #Detect is still has item
-            print("Getting new word")
+        if self.words:  #Detect if still has item
             new_word = self.words.popleft()
         else:
             print("Returning none from advance because no more words")
-            new_word = None
+            return None
         
+        # Detect if word is an empty string
+        if new_word == "":
+            print("Got an empty string as a word")
+            # new_word = self.advance()   # Dangerous, could end up in an infinite loop here
+
         return new_word
 
 class Parser(object):
     def __init__(self, scanner):
+        self.curr_word = None
         self.scanner = scanner
+        self.tokens = deque()
     
     def parse(self):
         self.scanner.move_to_next_line()
-        new_word = self.scanner.advance()
-        while new_word is not None:
-            print(new_word)
-            #TODO implement parser here
-
-            new_word = self.scanner.advance()
-            if new_word is None:
+        self.curr_word = self.scanner.advance()
+        while self.curr_word is not None:
+            if self.curr_word == "Exception":
+                self.parse_exception()
+            elif self.curr_word == "Traceback":
+                self.parse_traceback()
+            else:
+                print("Could not detect the start of an error. curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))
+                print("Moving to next line")            
                 self.scanner.move_to_next_line()
-                new_word = self.scanner.advance()   
-            
+                self.curr_word = self.scanner.advance()
 
-            
-        # time.sleep(1)
-        # for word in words:
-        #     word = word.lower()
-        #     if "exception" in word:
-        #         return ExceptionToken(line)
-        #     elif "traceback" in word:
-        #         return TracebackToken(line)
-        #     elif "error" in word or word == "generatorerror" or word == "systemexit":
-        #         return ErrorToken(word, line)
-        #     else:
-        #         return UnclassifiedToken(line)
+    def get_tokens(self):
+        return self.tokens
+
+    def parse_exception(self):
+        self.tokens.append(ExceptionToken(self.scanner.curr_line))
+        self.scanner.move_to_next_line()
+        self.curr_word = self.scanner.advance()
+        if self.curr_word == "Traceback":
+            self.parse_traceback()
+        else:
+            print("Problem in parse_exception, expected to see traceback. Instead got curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))
+            #TODO make this break in future
+
+        return
+
+    def parse_traceback(self):
+        self.tokens.append(TracebackToken(self.scanner.curr_line))
+        self.scanner.move_to_next_line()
+        self.curr_word = self.scanner.advance()
+        if self.curr_word == "File":
+            self.parse_file_trace_generic()
+        else:
+            print("Problem in parse_traceback, expected to see file. Instead got curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))
+            #TODO make this break in future
+        
+        return
+
+    def parse_file_trace_generic(self):
+        full_token_str = self.scanner.curr_line
+
+        self.curr_word = self.scanner.advance()
+
+        # Get file path
+        file_path = self.curr_word
+        while file_path.count("\"") < 2:   #need to make sure we get whole file location even if there are spaces in the name
+            self.curr_word = self.scanner.advance()
+            file_path = file_path + self.curr_word
+        file_path = file_path.strip(",")[0] #get rid of following comma
+
+        #TODO decide here whether we have a local or library file path
+
+        # Get line number
+        self.curr_word = self.scanner.advance() 
+        if self.curr_word == "line":
+            self.curr_word = self.scanner.advance()
+            line_num = self.curr_word.strip(",")[0]
+        else:
+            print("Problem in get_file_generic, expected to see line. Instead got curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))
+            line_num = None
+        
+        # Get function
+        self.curr_word = self.scanner.advance() 
+        if self.curr_word == "in":
+            self.curr_word = self.scanner.advance()
+            function_name = self.curr_word
+        else:
+            print("Problem in get_file_generic, expected to see function name. Instead got curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))
+            function_name = None
+
+        # Get the line in which the error occured
+        self.scanner.move_to_next_line()
+        self.curr_word = self.scanner.advance()
+        line_str = self.curr_word
+        while self.curr_word is not None:
+            self.curr_word = self.scanner.advance()
+            line_str = line_str + self.curr_word
+        
+        # Extend toke string with the line error
+        full_token_str = full_token_str + line_str
+
+        # Push back the file token
+        self.tokens.append(GenericFileToken(full_token_str, file_path, line_num, function_name, line_str))
+
+        # Check next line to see if it is another file trace
+        self.scanner.move_to_next_line()
+        self.curr_word = self.scanner.advance()
+        if self.curr_word == "File":
+            self.parse_file_trace_generic()
+        else:
+            self.tokens.append(ErrorToken("not_implemented", self.scanner.curr_line))   # Implement detection of known error types
+
+        print("Succesfully tokenised full error!")
+        return
+
 
 class Token(object):
     def __init__(self, _type, _str):
@@ -128,6 +207,14 @@ class ErrorToken(Token):
 class TracebackToken(Token):
     def __init__(self, _str):
         super().__init__("TRACEBACK" , _str)
+
+class GenericFileToken(Token):
+    def __init__(self, _str, _file_path, _line_num, _function_str, _line_str):
+        super().__init__("GENERIC_FILE" , _str)
+        self.file_path = _file_path
+        self.line_num = _line_num
+        self.function = _function_str
+        self.line = _line_str
 
 class UnclassifiedToken(Token):
     def __init__(self, _str):
@@ -153,11 +240,32 @@ if __name__ == '__main__':
 
     for data in my_data:
         scanner.append(data["error"])
+    
+##################### Test scanner is working #####################
+    scanner.move_to_next_line()
+    curr_word = scanner.advance()
+    still_lines = True
+    while still_lines is True:
+        curr_line = ""
+        while curr_word is not None:
+            curr_line = curr_line + curr_word
+            curr_word = scanner.advance()
 
-    parser.parse()
+        print(curr_line)
+        scanner.move_to_next_line()
+        curr_word = scanner.advance()
+        if curr_word is None:
+            still_lines = False
+###################################################################
 
+####################### Test parser is working ####################
+    # parser.parse()
+    # tokens = parser.get_tokens()
 
+    # for token in tokens:
+    #     print("Next token: {}  Str: {}".format(token.get_type(), token.get_str()))
 
+###################################################################
 
     #     count = 1
     #     for data in json_contents:
