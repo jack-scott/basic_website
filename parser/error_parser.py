@@ -1,46 +1,10 @@
-
-ERROR = 0
-ASSERTION_ERROR = 1
-ATTRIBUTE_ERROR = 2
-EOF_ERROR = 3
-FLOATINGPOINT_ERROR = 4
-GENERATOREXIT = 5
-IMPORT_ERROR = 6
-INDEX_ERROR = 7
-KEY_ERROR = 8
-KEYBOARDINTERRUPT = 9
-MEMORY_ERROR = 10
-NAME_ERROR = 11
-NOTIMPLEMENTED_ERROR = 12
-OS_ERROR = 13
-OVERFLOW_ERROR = 14
-REFERENCE_ERROR = 15
-RUNTIME_ERROR = 16
-STOPITERATION = 17
-SYNTAX_ERROR = 18
-INDENTATION_ERROR = 19
-TAB_ERROR = 20
-SYSTEM_ERROR = 21 
-SYSTEMEXIT = 22
-TYPE_ERROR = 23
-UNBOUNDLOCAL_ERROR = 24
-UNICODE_ERROR = 25
-UNICODEENCODE_ERROR = 26
-UNICODEDECODE_ERROR = 27
-UNICODETRANSLATE_ERROR = 28
-VALUE_ERROR = 29
-ZERODIVISION_ERROR = 30
-
-TRACEBACK = 100
-
-
 import json
 import time
 from collections import deque
 import traceback
 import sys
 
-
+# Scanner class for recieving and handling input text
 class Scanner(object):
     def __init__(self, debug=False):
         self.debug = debug
@@ -54,6 +18,7 @@ class Scanner(object):
         # This is purely for post run debugging
         self.store_input = deque()
 
+    # Appends more input to the scanner stream
     def append(self, input_stream):
         curr_input = input_stream.split("\n")
         self.num_lines = self.num_lines + len(curr_input)
@@ -63,6 +28,7 @@ class Scanner(object):
         self.store_input.extend(curr_input) 
         self.lines.extend(curr_input)    # Just append text not single position array
 
+    # Moves the scanner selection to the next line
     def move_to_next_line(self):
         if self.lines:  #Detect if still has item
             self.curr_line = self.lines.popleft()   # get the latest line
@@ -76,6 +42,7 @@ class Scanner(object):
         if self.curr_line == "":
             self.move_to_next_line()
 
+    # Advances the word pointer one step forward and returns the word
     def advance(self):
         if(self.debug):
             print("DEBUG - Entering advance. Curr word is: *{}* Contents of self.words is: *{}*".format(self.curr_word, self.words ))
@@ -113,14 +80,20 @@ class Scanner(object):
 
         return new_word
 
+    # Enables debug printing
     def set_debug_status(self, status):
         self.debug = status
 
+    # Prints the status of the scanner after finishing up
     def exit_status(self):
         print("DEBUG - Finishing up scanner. Lines left {}".format(self.num_lines))
     
+    # Clears the line counter, mainly for debug
+    def clear_stats(self):
+        self.num_lines = 0
 
 
+# The parser class uses tree logic in order to parse the input into tokens
 class Parser(object):
     def __init__(self, scanner, debug = False):
         self.debug = debug
@@ -133,6 +106,7 @@ class Parser(object):
         self.unparsed_lines = deque()
 
 
+    # Begins a loop that will continue to parse until all input has been tokenised
     def parse(self):
         self.scanner.move_to_next_line()
         self.curr_word = self.scanner.advance()
@@ -142,18 +116,28 @@ class Parser(object):
             elif self.curr_word == "Traceback":
                 self.parse_traceback()
             else:
-                print("Could not detect the start of an error in this line. curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))     
+                if self.debug:
+                    print("DEBUG - Could not detect the start of an error in this line. curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))     
                 self.unparsed_lines.append(self.scanner.curr_line)
                 self.num_unparsed_lines += 1
-                self.scanner.move_to_next_line()
-                self.curr_word = self.scanner.advance()
 
+            self.scanner.move_to_next_line()
+            self.curr_word = self.scanner.advance()
+            
+
+    # Sets the debug flag for printing
     def set_debug_status(self, status):
         self.debug = status
 
+    # Returns the parsed tokens
     def get_tokens(self):
         return self.tokens
 
+    # Clears all tokens, mainly for debugging
+    def clear_tokens(self):
+        self.tokens = deque()
+
+    # Case for parsing an exception token
     def parse_exception(self):
         self.tokens.append(ExceptionToken(self.scanner.curr_line))
         self.scanner.move_to_next_line()
@@ -166,6 +150,7 @@ class Parser(object):
 
         return
 
+    # Case for parsing a traceback token
     def parse_traceback(self):
         self.tokens.append(TracebackToken(self.scanner.curr_line))
         self.scanner.move_to_next_line()
@@ -178,6 +163,7 @@ class Parser(object):
         
         return
 
+    # Case for parsing a generic file traceback token
     def parse_file_trace_generic(self):
         full_token_str = self.scanner.curr_line
 
@@ -188,7 +174,7 @@ class Parser(object):
         while file_path.count("\"") < 2:   #need to make sure we get whole file location even if there are spaces in the name
             self.curr_word = self.scanner.advance()
             file_path = file_path + self.curr_word
-        file_path = file_path.strip(",")[0] #get rid of following comma
+        file_path = file_path.strip(",") #get rid of following comma
 
         #TODO decide here whether we have a local or library file path
 
@@ -196,7 +182,7 @@ class Parser(object):
         self.curr_word = self.scanner.advance() 
         if self.curr_word == "line":
             self.curr_word = self.scanner.advance()
-            line_num = self.curr_word.strip(",")[0]
+            line_num = self.curr_word.strip(",")
         else:
             print("Problem in get_file_generic, expected to see line. Instead got curr_word: *{}* \ncurr_line: {}".format(self.curr_word,self.scanner.curr_line))
             line_num = None
@@ -218,7 +204,10 @@ class Parser(object):
         if(self.debug):
             print("DEBUG - In parse_file_trace_generic trying to get the line in which the error occured. Curr_line is *{}*".format(self.scanner.curr_line))
         while self.curr_word is not None:
-            line_str = line_str + self.curr_word
+            if line_str == "":
+                line_str = self.curr_word
+            else:
+                line_str = line_str + " " + self.curr_word
             self.curr_word = self.scanner.advance()
         
         # Extend toke string with the line error
@@ -233,39 +222,51 @@ class Parser(object):
         if self.curr_word == "File":
             self.parse_file_trace_generic()
         else:
-            self.tokens.append(ErrorToken("not_implemented", self.scanner.curr_line))   # Implement detection of known error types
+            if ErrorToken.is_standard_error(self.curr_word.strip(":")):
+                err_type = self.curr_word.strip(":")
+            else:
+                err_type = "UnknownError"
+            print(err_type)
+            self.tokens.append(ErrorToken(err_type, self.scanner.curr_line))   # Implement detection of known error types
 
-        # print("Succesfully tokenised full error!")
         return
     
+    # Prints the status on exit 
     def exit_status(self):
         print("DEBUG - Finishing up parser. Number of unparsed lines {}".format(self.num_unparsed_lines))
 
+    # Clears the unparsed line counter. Mainly for debugging
+    def clear_stats(self):
+        self.num_unparsed_lines = 0 
+
     # Runs through all of the raw input and compares to the unparsed lines
+    # Prints seperators around anything that is unparsed
     def print_unparsed_in_context(self):
+        match_started = False
+
+        if self.unparsed_lines:
+            curr_unparsed_line = self.unparsed_lines.popleft()
+        else:
+            curr_unparsed_line = None
+
         while self.scanner.store_input:
             curr_stored_line = self.scanner.store_input.popleft()
-            if self.unparsed_lines:
-                curr_unparsed_line = self.unparsed_lines.popleft()
-                while curr_unparsed_line not in curr_stored_line:
-                    print(curr_stored_line)
-                    curr_stored_line = self.scanner.store_input.popleft()
-                
-                print("----------------------------------------------------->>")
-                while curr_unparsed_line in curr_stored_line:
-                    print(curr_unparsed_line)
-                    if self.unparsed_lines:
-                        curr_unparsed_line = self.unparsed_lines.popleft()
-                        curr_stored_line = self.scanner.store_input.popleft()
-                    else:
-                        break
-                    
+            
+            if curr_unparsed_line is not None and curr_unparsed_line in curr_stored_line:
+                if not match_started:
+                    print("----------------------------------------------------->>")
+                    match_started = True
+                if self.unparsed_lines:
+                    curr_unparsed_line = self.unparsed_lines.popleft()
+                else:
+                    curr_unparsed_line = None
+            elif match_started:
                 print("<<-----------------------------------------------------")
-                print(curr_stored_line)
+                match_started = False
 
-            else:
-                print(curr_stored_line)
+            print(curr_stored_line)
 
+# Generic token object
 class Token(object):
     def __init__(self, _type, _str):
         self.token_type = _type
@@ -277,15 +278,93 @@ class Token(object):
     def get_type(self):
         return self.token_type
 
+# ErrorToken object
 class ErrorToken(Token):
     def __init__(self, _err_type, _str):
         super().__init__("ERROR" , _str)
-        error_type = _err_type
+        self.error_type = _err_type
+    
+    @staticmethod
+    def is_standard_error(err_code):
+        error_list = ["SystemExit"
+                            ,"KeyboardInterrupt"
+                            ,"GeneratorExit"
+                            ,"Exception"
+                            ,"StopIteration"
+                            ,"StopAsyncIteration"
+                            ,"ArithmeticError"
+                            ,"FloatingPointError"
+                            ,"OverflowError"
+                            ,"ZeroDivisionError"
+                            ,"AssertionError"
+                            ,"AttributeError"
+                            ,"BufferError"
+                            ,"EOFError"
+                            ,"ImportError"
+                            ,"ModuleNotFoundError"
+                            ,"LookupError"
+                            ,"IndexError"
+                            ,"KeyError"
+                            ,"MemoryError"
+                            ,"NameError"
+                            ,"UnboundLocalError"
+                            ,"OSError"
+                            ,"BlockingIOError"
+                            ,"ChildProcessError"
+                            ,"ConnectionError"
+                            ,"BrokenPipeError"
+                            ,"ConnectionAbortedError"
+                            ,"ConnectionRefusedError"
+                            ,"ConnectionResetError"
+                            ,"FileExistsError"
+                            ,"FileNotFoundError"
+                            ,"InterruptedError"
+                            ,"IsADirectoryError"
+                            ,"NotADirectoryError"
+                            ,"PermissionError"
+                            ,"ProcessLookupError"
+                            ,"TimeoutError"
+                            ,"ReferenceError"
+                            ,"RuntimeError"
+                            ,"NotImplementedError"
+                            ,"RecursionError"
+                            ,"SyntaxError"
+                            ,"IndentationError"
+                            ,"TabError"
+                            ,"SystemError"
+                            ,"TypeError"
+                            ,"ValueError"
+                            ,"UnicodeError"
+                            ,"UnicodeDecodeError"
+                            ,"UnicodeEncodeError"
+                            ,"UnicodeTranslateError"
+                            ,"Warning"
+                            ,"DeprecationWarning"
+                            ,"PendingDeprecationWarning"
+                            ,"RuntimeWarning"
+                            ,"SyntaxWarning"
+                            ,"UserWarning"
+                            ,"FutureWarning"
+                            ,"ImportWarning"
+                            ,"UnicodeWarning"
+                            ,"BytesWarning"
+                            ,"ResourceWarning"]
+        return err_code in error_list
 
+    def __str__(self):
+        print_str = "{}\n\ttype: {}\n\tstr: {}".format(self.token_type, self.error_type, self.token_str)
+        return print_str
+
+# TracebackToken object
 class TracebackToken(Token):
     def __init__(self, _str):
         super().__init__("TRACEBACK" , _str)
 
+    def __str__(self):
+        print_str = "{}\n\tstr: {}".format(self.token_type, self.token_str)
+        return print_str
+
+# GenericFileToken object
 class GenericFileToken(Token):
     def __init__(self, _str, _file_path, _line_num, _function_str, _line_str):
         super().__init__("GENERIC_FILE" , _str)
@@ -294,13 +373,27 @@ class GenericFileToken(Token):
         self.function = _function_str
         self.line = _line_str
 
+    def __str__(self):
+        print_str = "{}\n\tfile path: {}\n\tline num: {}\n\tfunction: {}\n\tline: {}".format(self.token_type, self.file_path, self.line_num, self.function, self.line)
+        return print_str
+
+# UnclassifiedToken object
 class UnclassifiedToken(Token):
     def __init__(self, _str):
         super().__init__("UNCLASSIFIED" , _str)
 
+    def __str__(self):
+        print_str = "{}\n\tstr: {}".format(self.token_type, self.token_str)
+        return print_str
+
+# ExceptionToken object
 class ExceptionToken(Token):
     def __init__(self, _str):
         super().__init__("EXCEPTION" , _str)
+    
+    def __str__(self):
+        print_str = "{}\n\tstr: {}".format(self.token_type, self.token_str)
+        return print_str
 
 
 
@@ -328,12 +421,17 @@ if __name__ == '__main__':
             del exc_info
         
         tokens = parser.get_tokens()
+        print("****** Got tokens ******")
         for token in tokens:
-            print("Next token: {}".format(token.get_type()))
+            print(token)
+        print("************************")
 
         scanner.exit_status()
         parser.exit_status()
         parser.print_unparsed_in_context()
+        scanner.clear_stats()
+        parser.clear_stats()
+        parser.clear_tokens()
         input("Press enter to parse next error")
         
 ##################### Test scanner is working #####################
