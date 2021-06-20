@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_restful import Resource, Api, reqparse
+from flask_cors import CORS, cross_origin
 import requests
 
 SE_API_URL = 'https://api.stackexchange.com/2.2'
@@ -26,11 +27,12 @@ class Solutions(Resource):
         # un-comment to return full stack overflow response
         # return response.json()
 
-        items = response.json()['items']
-        return [item['link'] for item in items]
+        items = response.json()
+        return items
 
 if __name__ == "__main__":
     app = Flask(__name__)
+    CORS(app)
     api = Api(app)
 
     api.add_resource(Solutions, '/solutions')
